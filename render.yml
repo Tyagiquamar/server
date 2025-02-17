@@ -1,0 +1,19 @@
+services:
+  - name: ai-assistant
+    type: web
+    runtime: node
+    plan: free
+    branch: main
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    envVars:
+      - key: DOMAIN
+        value: "your-app-name.onrender.com"
+      - key: PORT
+        value: "10000"
+      - key: ELEVENLABS_VOICE_ID
+        sync: false
+      - key: XI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
