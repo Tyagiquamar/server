@@ -5,7 +5,6 @@ const axios = require('axios');
 const http = require('http');
 const { Server: WebSocketServer } = require('ws');
 const twilio = require('twilio');
-const speech = require('@google-cloud/speech'); // Use Google Cloud Speech-to-Text
 
 const app = express();
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -59,6 +58,7 @@ const generateSpeech = async (text) => {
  */
 const generateGeminiResponse = async (inputText) => {
   try {
+    // Replace the following URL with your actual Gemini endpoint if applicable
     const url = 'https://api.gemini.com/v1/query'; // Example placeholder for Gemini's API endpoint
 
     const response = await axios.post(url, {
@@ -76,44 +76,6 @@ const generateGeminiResponse = async (inputText) => {
   } catch (error) {
     console.error("❌ Error generating response from Gemini:", error.response?.data || error);
     return "Sorry, there was an error while processing your request.";
-  }
-};
-
-/**
- * Converts base64-encoded audio to text using Google Cloud Speech-to-Text
- */
-const audioToText = async (audioBase64) => {
-  try {
-    const client = new speech.SpeechClient();
-
-    // Convert base64 to buffer
-    const audioBuffer = Buffer.from(audioBase64, 'base64');
-    
-    const audio = {
-      content: audioBuffer.toString('base64'),
-    };
-
-    const config = {
-      encoding: 'LINEAR16', // Adjust based on your audio encoding
-      sampleRateHertz: 16000,
-      languageCode: 'en-US',
-    };
-
-    const request = {
-      audio: audio,
-      config: config,
-    };
-
-    const [response] = await client.recognize(request);
-    const transcript = response.results
-      .map(result => result.alternatives[0].transcript)
-      .join('\n');
-    console.log(`Transcribed Text: ${transcript}`);
-    return transcript;
-
-  } catch (error) {
-    console.error("❌ Error transcribing audio:", error);
-    return "Sorry, I couldn't understand the audio.";
   }
 };
 
@@ -154,21 +116,6 @@ wss.on('connection', async (ws, req) => {
       if (parsed.event && parsed.event.toLowerCase() === "dtmf") {
         const digit = parsed.digits || parsed.Digits;
         if (digit) await handleDTMF(digit, ws);
-      } else if (parsed.event && parsed.event.toLowerCase() === "audio") {
-        // Handle audio input, convert audio to text
-        const text = await audioToText(parsed.media.payload);
-
-        // Generate response based on the transcribed text
-        const responseText = await generateGeminiResponse(text);
-
-        // Convert the response to speech and send it back to the client
-        const audioBase64 = await generateSpeech(responseText);
-        if (audioBase64) {
-          ws.send(JSON.stringify({ event: "media", media: { payload: audioBase64 } }));
-        }
-
-        // Send the text response back as well
-        ws.send(JSON.stringify({ event: "text", text: responseText }));
       } else if (parsed.text) {
         console.log("💬 User said:", parsed.text);
         let responseText;
